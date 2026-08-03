@@ -216,6 +216,40 @@
       <q-card-section>
         <div class="text-subtitle1 q-mb-md">Database Maintenance</div>
 
+        <q-input
+          v-model.number="form.proxy_log_retention_days"
+          label="Auto-delete logs older than (days)"
+          outlined
+          dense
+          type="number"
+          min="1"
+          style="max-width: 320px"
+          class="q-mb-xs"
+          hint="A job runs daily at 00:00 (in the configured timezone) and removes logs older than this. Default 3."
+        />
+
+        <q-toggle
+          v-model="form.log_request_body"
+          label="Store request body in error logs"
+          class="q-mt-md q-mb-xs"
+        />
+        <div class="text-caption text-grey-7 q-mb-md">
+          When off, the request body is not stored (an empty <code>{}</code> is saved instead) to
+          save disk space. The cURL command on the Proxy Error Logs page will have an empty body.
+          Headers are unaffected. Default off.
+        </div>
+        <div class="q-mb-md">
+          <q-btn
+            color="primary"
+            label="Save Settings"
+            :loading="saving"
+            @click="saveSettings"
+          />
+        </div>
+
+        <q-separator class="q-mb-md" />
+
+        <div class="text-caption text-grey-7 q-mb-sm">Manual purge</div>
         <div class="row q-gutter-sm items-center q-mb-sm">
           <q-select
             v-model="purgeKeepDays"
@@ -301,6 +335,11 @@
         <q-card-section>
           Are you sure you want to permanently delete {{ purgePreviewCount }} logs older than
           {{ purgeKeepDays }} days? This cannot be undone.
+          <div class="text-warning q-mt-sm">
+            &#9888; The current month's log table will be briefly locked while disk space is
+            reclaimed (VACUUM FULL). New proxy logs may be delayed or dropped during this time;
+            request relay is not affected.
+          </div>
         </q-card-section>
         <q-card-actions align="right">
           <q-btn flat label="Cancel" v-close-popup />
@@ -330,6 +369,8 @@ interface Settings {
   openai_compat_base_url: string | null;
   public_base_url: string | null;
   api_key_prefix: string | null;
+  proxy_log_retention_days: number;
+  log_request_body: boolean;
 }
 
 interface TelegramChat {
@@ -354,6 +395,8 @@ const form = ref<Settings>({
   openai_compat_base_url: null,
   public_base_url: null,
   api_key_prefix: null,
+  proxy_log_retention_days: 3,
+  log_request_body: false,
 });
 
 const alertStatusCodesStr = computed({
@@ -438,6 +481,8 @@ async function saveSettings() {
       openai_compat_base_url: form.value.openai_compat_base_url || null,
       public_base_url: form.value.public_base_url || null,
       api_key_prefix: form.value.api_key_prefix || null,
+      proxy_log_retention_days: form.value.proxy_log_retention_days,
+      log_request_body: form.value.log_request_body,
     });
     form.value = { ...form.value, ...data, timezone: data.timezone || 'Asia/Ho_Chi_Minh' };
     $q.notify({ type: 'positive', message: 'Settings saved' });
